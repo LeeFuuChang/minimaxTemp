@@ -2,253 +2,156 @@
 #define EVALUATION_H
 
 
+#include <vector>
+
+
+#define self this->
 #define int long long
 #define float double
-
-
-// 空格 ->  0
-// 紅棋 ->  1
-// 藍棋 -> -1
-const int EMPTY=0;
-const int BLUESIDE=-1;
-const int REDSIDE=1;
-
-
-// 把棋盤權重引入
-#include "BoardWeights.h"
-// 目前表現最佳的棋盤權重是 boardWeight_Type1
-// 建議不管表現好壞都留著
-// 不然之後會想不起來測試過哪些權重
-#define usingBoardWeight boardWeight_Type1
 
 
 using namespace std;
 
 
-
-
-struct State { // 記得把原檔案的 struct State 刪掉，不然會二次宣告
+struct State {
     bool pos[8][8]; // false: x (red), true: o (blue)
     bool exist[8][8];
 };
+struct srnd{
+    int s, a, b, c;
+    int dr[2];
 
-
-
-
-/* 向量：
-點 (3, 3) 到 點 (4, 5) 的向量為：
- => (4-3, 5-3)
-
-反過來的話
-
-點 (4, 5) 到 點 (3, 3) 的向量為：
- => (3-4, 3-5)
-
-結論：
-    向量 = (終點x - 起點x , 終點y - 起點y)
-    因此可得
-    終點 = (起點x + 向量x , 起點y + 向量y)
-*/
-struct Point { // 記錄點的位置 也可以用來記錄向量
-    int r, c;
-    Point(int r, int c){
-        this->r=r;
-        this->c=c;
-    }
+    srnd(int s, int a, int b, int c, int d1, int d2){
+        self s = s;
+        self a = a;
+        self b = b;
+        self c = c;
+        self dr[0] = d1;
+        self dr[1] = d2;
+    };
 };
 
 
-
-
-// 主體
-class theAI{
+class AI{
     public:
-        int coff[7] = {
-            12,      // 角落
-            11,     // 邊
-            3,      // 非邊
-            4,      // 行動力
-            1,      // 空格數
-            3,      // 子數差
-            1      // 棋盤位置
-        };
-        Point corners[4][6] = {
-            {
-                Point( 0, 0), // 左上
-                Point( 0, 1), // 左上 - 右
-                Point( 1, 0), // 左上 - 下
-                Point( 1, 1), // 左上 - 右下
-                Point( 0, 1), // 左上 - 右   - 向量
-                Point( 1, 0)  // 左上 - 下   - 向量
-            },{
-                Point( 0, 7), // 右上
-                Point( 0, 6), // 右上 - 左
-                Point( 1, 7), // 右上 - 下
-                Point( 1, 6), // 右上 - 左下
-                Point( 0,-1), // 右上 - 左   - 向量
-                Point( 1, 0)  // 右上 - 下   - 向量
-            },{
-                Point( 7, 0), // 左下
-                Point( 7, 1), // 左下 - 右
-                Point( 6, 0), // 左下 - 上
-                Point( 6, 1), // 左下 - 右上
-                Point( 0, 1), // 左下 - 右   - 向量
-                Point(-1, 0)  // 左下 - 上   - 向量
-            },{
-                Point( 7, 7), // 右下
-                Point( 7, 6), // 右下 - 左
-                Point( 6, 7), // 右下 - 上
-                Point( 6, 6), // 右下 - 左上
-                Point( 0,-1), // 右下 - 左   - 向量
-                Point(-1, 0)  // 右下 - 上   - 向量
-            }
-        };
-        Point directions[8] = {
-            Point(-1,-1), // 左上
-            Point(-1, 0), // 中上
-            Point(-1, 1), // 右上
-            Point( 0,-1), // 中左
-            Point( 0, 1), // 中右
-            Point( 1,-1), // 左下
-            Point( 1, 0), // 中下
-            Point( 1, 1)  // 右下 
-        };
-        int boardWeight[8][8];
+        int side = 1;
 
+        int boardWeightMultiplier = 4;
+        int boardWeight[8][8] = {
+            { 64, -32, 16,  8,  8, 16, -32, 64},
+            {-32, -16, -8,  1,  1, -8, -16,-32},
+            { 16,  -8,  4,  2,  2,  4,  -8, 16},
+            {  8,   1,  2,  1,  1,  2,   1,  8},
+            {  8,   1,  2,  1,  1,  2,   1,  8},
+            { 16,  -8,  4,  2,  2,  4,  -8, 16},
+            {-32, -16, -8,  1,  1, -8, -16,-32},
+            { 64, -32, 16,  8,  8, 16, -32, 64}
+        };
 
-        theAI(){};
+        srnd rnd[4] = {
+            srnd( 0, 1, 8, 9, 1, 8),
+            srnd( 7, 6,15,14,-1, 8),
+            srnd(56,57,48,49, 1,-8),
+            srnd(63,62,55,54,-1,-8)
+        };
+        int dr[8] = {-8,-7, 1, 9, 8, 7,-1,-9};
+        int bk[8] = { 8, 0, 0, 0, 8, 7, 7, 7};
+        int weight[7] = {10, 801.724, 382.026, 74.396, 78.922, 0, 100};
 
-        int cvt(bool exist, bool piece){
-            return (exist)? ( (piece)? BLUESIDE : REDSIDE ) : 0 ;
+        AI(){};
+
+        int dire(int i, int d){
+            i += dr[d];
+            return ( (i&64)!=0 || (i&7) == bk[d] ) ? 64 : i;
         }
 
-        int evaluation(State& s, bool redTurn, int availableMoves){
-            // Terms
-            int 
-            cornerScore=0,      // 角落
-            sideScore=0,        // 邊
-            innerScore=0,       // 非邊
-            mobilityScore=0,    // 行動力
-            parityScore=0,      // 空格數
-            pieceScore=0,       // 子數差
-            boardScore=0,       // 棋盤位置
-            side=redTurn ? REDSIDE : BLUESIDE;
-
-
-            // board weight
-            int m[8][8]={}, w[8][8]={};
-            int redP=0, redW=0, blueP=0, blueW=0, space=0;
+        float evaluation(State &s, int available){
+            int m[64] = {}, space = 0, board_weight = 0, my_tiles = 0, opp_tiles = 0;
             for(int i=0; i<8; i++){
                 for(int j=0; j<8; j++){
-                    boardWeight[i][j] = usingBoardWeight[i][j];
-                    w[i][j] = 0;
-                    m[i][j] = cvt(s.exist[i][j], s.pos[i][j]);
-                    switch( m[i][j] ){
-                        case EMPTY:
-                            space++;
-                            break;
-                        
-                        case BLUESIDE:
-                            blueP++;
-                            blueW += boardWeight[i][j];
-                            break;
-
-                        case REDSIDE:
-                            redP++;
-                            redW += boardWeight[i][j];
-                            break;
+                    int n = i*8 + j;
+                    if(s.exist[i][j]){
+                        m[n] = s.pos[i][j]? self side : -self side;
+                        board_weight += self boardWeight[i][j]*self side*m[n]*boardWeightMultiplier;
+                        my_tiles += (m[n] == self side);
+                        opp_tiles += (m[n] == -self side);
+                    }else{
+                        m[n] = 0;
+                        space++;
                     }
                 }
             }
-            pieceScore = ( (redP*redP) - (blueP*blueP) )*side;
-            boardScore = ( (redW*redW) - (blueW*blueW) )*side;
+            int tileDiff;
+            if(my_tiles > opp_tiles) tileDiff = (100.0 * my_tiles)/(my_tiles + opp_tiles);
+            else if(my_tiles < opp_tiles) tileDiff = -(100.0 * opp_tiles)/(my_tiles + opp_tiles);
+            else tileDiff = 0;
 
 
+
+            int corner = 0, steady = 0, uk[64] = {};
             for(int i=0; i<4; i++){
-                Point* v = corners[i];
-
-                if( m[ v[0].r ][ v[0].c ]==0 ){
-                    cornerScore += m[ v[1].r ][ v[1].c ] * -3;
-                    cornerScore += m[ v[2].r ][ v[2].c ] * -3;
-                    cornerScore += m[ v[3].r ][ v[3].c ] * -6;
+                srnd v = rnd[i];
+                if (m[v.s]==0){
+                    corner += m[v.a] * -3;
+                    corner += m[v.b] * -3;
+                    corner += m[v.c] * -6;
                     continue;
                 }
-
-                cornerScore += m[ v[0].r ][ v[0].c ] * 15; // 角落很重要
-                sideScore   += m[ v[0].r ][ v[0].c ];        // 角落也算在邊上
-
-                for(int j=4; j<6; j++){
-                    if( w[ v[0].r+v[j].r ][ v[0].c+v[j].c ] ) continue; // 已經檢查過
-
-                    int eb=1, tmpSideScore=0, k;
-                    for(k=1; k<7; k++){ // 1 個角落連接 6 個邊點
-                        int t = m[ v[0].r+v[j].r*k ][ v[0].c+v[j].c*k ];
-                        if( t==0 ){
-                            break;
-                        }else if(eb && t==m[ v[0].r ][ v[0].c ]){ // 與角點連續著 並 同色 的
-                            sideScore += t;
-                        }else{ // 與角點不同色 或者 不連續的
-                            eb = 0;
-                            tmpSideScore += t;
+                corner += m[v.s] * 15;
+                steady += m[v.s];
+                for(int j=0; j<2; j++){
+                    if(uk[v.s + v.dr[j]]) continue;
+                    bool eb = true; int tmp = 0;
+                    int k;
+                    for(k=1; k<=6; k++){
+                        int t = m[v.s+v.dr[j]*k];
+                        if(t==0) break;
+                        else if(eb && t==m[v.s]) steady += t;
+                        else{
+                            eb = false;
+                            tmp += t;
                         }
                     }
-
-                    if( k==7 && m[ v[0].r+v[j].r*k ][ v[0].c+v[j].c*k ]!=0 ){ // 這個角點連接的 6 個邊點都被占掉 且 另一個角點也被占掉
-                        sideScore += tmpSideScore;
-                        w[ v[0].r+v[j].r ][ v[0].c+v[j].c ] = 1;
+                    if (k==7 && m[v.s+v.dr[k]*7]!=0){
+                        steady += tmp;
+                        uk[v.s+v.dr[k]*6] = 1;
                     }
                 }
             }
 
-
-            for(int i=1; i<7; i++){
-                for(int j=1; j<7; j++){
-                    if( !m[i][j] ) continue;
-                    for(int k=0; k<8; k++){
-                        if( m[ i+directions[k].r ][ i+directions[k].c ] ){
-                            innerScore -= m[i][j];
-                            break;
-                        }
+            int frontier = 0;
+            for(int i=9; i<54; i += ((i&7)==6)?3:1 ){
+                if(m[i] == 0) continue;
+                for(int j=0; j<8; j++){
+                    if( m[self dire(i, j)] == 0 ){
+                        frontier -= m[i];
+                        break;
                     }
                 }
             }
 
+            int mobility = available*self side;
 
-            mobilityScore = availableMoves*side;
+            int parity = space<18 ? ( space%2==0 ? -self side : self side) : 0;
 
-
-            parityScore = space<18 ? ( space%2==0 ? -side : side ) : 0;
-
-            int finalScore = (
-                cornerScore*coff[0]     // 角落
+            int score = (
+                tileDiff*weight[0]
             ) + (
-                sideScore*coff[1]       // 邊
+                corner*weight[1]
             ) + (
-                innerScore*coff[2]      // 非邊
+                steady*weight[2]
             ) + (
-                mobilityScore*coff[3]   // 行動力
+                frontier*weight[3]
             ) + (
-                parityScore*coff[4]     // 空格數
+                mobility*weight[4]
             ) + (
-                pieceScore*coff[5]      // 子數差
+                parity*weight[5]
             ) + (
-                boardScore*coff[6]      // 棋盤位置
+                board_weight*weight[6]
             );
-            
-            // Print Result
-            /*
-            cout << "side           :" << side << endl;
-            cout << "cornerScore    :" << cornerScore*coff[0] << endl;
-            cout << "sideScore      :" << sideScore*coff[1] << endl;
-            cout << "innerScore     :" << innerScore*coff[2] << endl;
-            cout << "mobilityScore  :" << mobilityScore*coff[3] << endl;
-            cout << "parityScore    :" << parityScore*coff[4] << endl;
-            cout << "pieceScore     :" << pieceScore*coff[5] << endl;
-            cout << "boardScore     :" << boardScore*coff[6] << endl;
-            cout << "finalScore     :" << finalScore*side << endl;
-            */
-            return finalScore*side;
+            return score * self side;
         };
-} AI;
+};
+
 
 #endif
